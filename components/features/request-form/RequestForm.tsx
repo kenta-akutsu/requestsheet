@@ -8,14 +8,23 @@ import { AsanaTaskSearch } from './AsanaTaskSearch'
 import { PrioritySelector } from './PrioritySelector'
 import { AppButton } from '@/components/primitives/AppButton'
 
+interface FormContext {
+  customerName: string
+  product: string
+  contractStatus: string
+  priority: string
+  rawRequest: string
+}
+
 interface RequestFormProps {
-  onComplete: (requestId: string, rawRequest: string) => void
+  onComplete: (requestId: string, context: FormContext) => void
 }
 
 const PRODUCTS = [
-  { value: 'OCR', label: 'AI OCR' },
-  { value: 'TimecardAgent', label: 'TimeCard Agent' },
-  { value: 'RAG', label: 'RAG' },
+  { value: 'OCR', label: 'GenX AI OCR' },
+  { value: 'TimecardAgent', label: 'タイムカードAIエージェント' },
+  { value: 'NandemonAI', label: 'ナンデモンAI' },
+  { value: 'AIConsulting', label: 'AIを利用したシステム開発のご相談' },
   { value: 'Other', label: 'その他' },
 ] as const
 
@@ -59,7 +68,13 @@ export function RequestForm({ onComplete }: RequestFormProps) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || '作成に失敗しました')
-      onComplete(json.request.id, data.raw_request)
+      onComplete(json.request.id, {
+        customerName: data.customer_name,
+        product: data.product,
+        contractStatus: data.contract_status,
+        priority: data.priority,
+        rawRequest: data.raw_request,
+      })
     } catch (e) {
       setApiError(e instanceof Error ? e.message : '予期しないエラーが発生しました')
     } finally {

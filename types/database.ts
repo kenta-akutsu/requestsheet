@@ -1,5 +1,5 @@
 export type UserRole = 'sales' | 'engineer' | 'bizdev' | 'admin'
-export type ProductType = 'OCR' | 'TimecardAgent' | 'RAG' | 'Other'
+export type ProductType = 'OCR' | 'TimecardAgent' | 'NandemonAI' | 'AIConsulting' | 'Other'
 export type ContractStatus = 'pre_contract' | 'negotiating' | 'contracted'
 export type Priority = 'high' | 'medium' | 'low'
 export type RequestStatus = 'chatting' | 'sheet_complete' | 'under_review' | 'responded' | 'closed'
@@ -54,11 +54,12 @@ export interface RequestSheet {
   expected_behavior: string | null
   target_users: string | null
   target_screen: string | null
+  deadline: string | null
+  budget: string | null
   data_scale: string | null
   external_integrations: string | null
   io_format: string | null
   security_requirements: string | null
-  deadline: string | null
   business_impact: string | null
   unchecked_items: string | null
   tier1_complete: boolean

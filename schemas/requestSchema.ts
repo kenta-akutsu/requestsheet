@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const createRequestSchema = z.object({
   customer_name: z.string().min(1, '顧客名を入力してください'),
-  product: z.enum(['OCR', 'TimecardAgent', 'RAG', 'Other'], {
+  product: z.enum(['OCR', 'TimecardAgent', 'NandemonAI', 'AIConsulting', 'Other'], {
     error: 'プロダクトを選択してください',
   }),
   contract_status: z.enum(['pre_contract', 'negotiating', 'contracted'], {

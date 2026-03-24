@@ -5,15 +5,43 @@ import { RequestForm } from '@/components/features/request-form/RequestForm'
 import { ChatWindow } from '@/components/features/chat/ChatWindow'
 import { useRouter } from 'next/navigation'
 
+interface FormContext {
+  customerName: string
+  product: string
+  contractStatus: string
+  priority: string
+  rawRequest: string
+}
+
+const PRODUCT_LABELS: Record<string, string> = {
+  OCR: 'GenX AI OCR',
+  TimecardAgent: 'タイムカードAIエージェント',
+  NandemonAI: 'ナンデモンAI',
+  AIConsulting: 'AIを利用したシステム開発のご相談',
+  Other: 'その他',
+}
+
+const CONTRACT_LABELS: Record<string, string> = {
+  pre_contract: '契約前',
+  negotiating: '交渉中',
+  contracted: '契約済み',
+}
+
+const PRIORITY_LABELS: Record<string, string> = {
+  high: '高',
+  medium: '中',
+  low: '低',
+}
+
 export default function NewRequestPage() {
   const [step, setStep] = useState<'form' | 'chat'>('form')
   const [requestId, setRequestId] = useState<string | null>(null)
-  const [rawRequest, setRawRequest] = useState('')
+  const [formContext, setFormContext] = useState<FormContext | null>(null)
   const router = useRouter()
 
-  function handleFormComplete(id: string, raw: string) {
+  function handleFormComplete(id: string, context: FormContext) {
     setRequestId(id)
-    setRawRequest(raw)
+    setFormContext(context)
     setStep('chat')
   }
 
@@ -21,6 +49,22 @@ export default function NewRequestPage() {
     if (requestId) {
       router.push(`/requests/${requestId}`)
     }
+  }
+
+  // Build the initial message with full context for AI
+  function buildInitialMessage(ctx: FormContext): string {
+    const productLabel = PRODUCT_LABELS[ctx.product] || ctx.product
+    const contractLabel = CONTRACT_LABELS[ctx.contractStatus] || ctx.contractStatus
+    const priorityLabel = PRIORITY_LABELS[ctx.priority] || ctx.priority
+
+    return `【要望概要】
+顧客名: ${ctx.customerName}
+対象プロダクト: ${productLabel}
+契約ステータス: ${contractLabel}
+優先度: ${priorityLabel}
+
+【要望内容】
+${ctx.rawRequest}`
   }
 
   return (
@@ -52,10 +96,12 @@ export default function NewRequestPage() {
       <div className="bg-card rounded-lg border border-border p-6">
         {step === 'form' ? (
           <RequestForm onComplete={handleFormComplete} />
-        ) : requestId ? (
+        ) : requestId && formContext ? (
           <ChatWindow
             requestId={requestId}
-            initialMessage={rawRequest || '要望の詳細を教えてください。'}
+            initialMessage={buildInitialMessage(formContext)}
+            productName={PRODUCT_LABELS[formContext.product] || formContext.product}
+            customerName={formContext.customerName}
             onSheetComplete={handleSheetComplete}
           />
         ) : null}

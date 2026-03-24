@@ -9,6 +9,8 @@ function LoginContent() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isSignUp, setIsSignUp] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
@@ -34,13 +36,31 @@ function LoginContent() {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      setError('メールアドレスまたはパスワードが正しくありません')
+    setMessage(null)
+
+    if (isSignUp) {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: email.split('@')[0] },
+        },
+      })
+      if (error) {
+        setError(error.message)
+      } else {
+        setMessage('アカウントを作成しました。メールを確認してください。')
+      }
       setLoading(false)
     } else {
-      router.push('/dashboard')
-      router.refresh()
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        setError('メールアドレスまたはパスワードが正しくありません')
+        setLoading(false)
+      } else {
+        router.push('/dashboard')
+        router.refresh()
+      }
     }
   }
 
@@ -60,6 +80,13 @@ function LoginContent() {
           {(error || errorFromUrl) && (
             <div className="mb-4 p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
               {error || 'ログインに失敗しました。もう一度お試しください。'}
+            </div>
+          )}
+
+          {/* Success Message */}
+          {message && (
+            <div className="mb-4 p-3 rounded-md bg-green-500/10 border border-green-500/20 text-green-400 text-sm">
+              {message}
             </div>
           )}
 
@@ -123,9 +150,20 @@ function LoginContent() {
               disabled={loading}
               className="w-full py-3 rounded-md bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              {loading ? '処理中...' : 'ログイン'}
+              {loading ? '処理中...' : isSignUp ? 'アカウント登録' : 'ログイン'}
             </button>
           </form>
+
+          {/* Toggle Sign Up / Login */}
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              onClick={() => { setIsSignUp(!isSignUp); setError(null); setMessage(null) }}
+              className="text-sm text-muted-foreground hover:text-primary transition-colors"
+            >
+              {isSignUp ? 'すでにアカウントをお持ちの方はこちら' : 'アカウントをお持ちでない方はこちら'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

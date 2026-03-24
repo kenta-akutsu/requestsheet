@@ -1,6 +1,63 @@
-import { anthropic, CHAT_SYSTEM_PROMPT } from '@/lib/anthropic/client'
+import { geminiModel, buildSystemPrompt } from '@/lib/gemini/client'
+import { getDevProjectTasks, getSalesProjectTasksWithSections } from '@/lib/asana/client'
 import { createServerClient } from '@/lib/supabase/server'
 import { NextRequest } from 'next/server'
+import type { AsanaDevTask } from '@/types/asana'
+
+// Format dev tasks into a readable context for AI
+function formatDevTasksContext(tasks: AsanaDevTask[]): string {
+  if (tasks.length === 0) return '（開発ボードの情報は取得できませんでした）'
+
+  const activeTasks = tasks.filter(t => !t.completed)
+  const completedTasks = tasks.filter(t => t.completed)
+
+  let context = `## 現在の開発ボード状況（${tasks.length}件）\n\n`
+
+  if (activeTasks.length > 0) {
+    context += `### 進行中・予定のタスク（${activeTasks.length}件）\n`
+    activeTasks.forEach(t => {
+      context += `- **${t.name}**`
+      if (t.section) context += ` [${t.section}]`
+      if (t.assignee) context += ` 担当:${t.assignee}`
+      if (t.dueOn) context += ` 期限:${t.dueOn}`
+      if (t.notes) {
+        const shortNotes = t.notes.substring(0, 150).replace(/\n/g, ' ')
+        context += `\n  詳細: ${shortNotes}${t.notes.length > 150 ? '...' : ''}`
+      }
+      context += '\n'
+    })
+  }
+
+  if (completedTasks.length > 0) {
+    context += `\n### 完了済みタスク（${completedTasks.length}件）\n`
+    completedTasks.slice(0, 20).forEach(t => {
+      context += `- ${t.name}`
+      if (t.section) context += ` [${t.section}]`
+      context += '\n'
+    })
+  }
+
+  return context
+}
+
+// Format sales project tasks into context for AI
+function formatSalesTasksContext(tasks: AsanaDevTask[]): string {
+  if (tasks.length === 0) return ''
+
+  const activeTasks = tasks.filter(t => !t.completed)
+
+  let context = `## 案件管理ボード状況（${activeTasks.length}件の進行中案件）\n\n`
+
+  activeTasks.forEach(t => {
+    context += `- **${t.name}**`
+    if (t.section) context += ` [${t.section}]`
+    if (t.assignee) context += ` 担当:${t.assignee}`
+    if (t.dueOn) context += ` 期限:${t.dueOn}`
+    context += '\n'
+  })
+
+  return context
+}
 
 export async function POST(req: NextRequest) {
   const supabase = createServerClient()
@@ -8,29 +65,65 @@ export async function POST(req: NextRequest) {
   if (!session) return new Response('Unauthorized', { status: 401 })
 
   try {
-    const { requestId, messages } = await req.json()
+    const { requestId, messages, productName } = await req.json()
 
-    const stream = await anthropic.messages.stream({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      system: CHAT_SYSTEM_PROMPT,
-      messages: messages.map((m: { role: string; content: string }) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
+    // Fetch both boards in parallel (non-blocking on failure)
+    let devTasksContext = ''
+    let salesTasksContext = ''
+
+    const [devResult, salesResult] = await Promise.allSettled([
+      getDevProjectTasks(),
+      getSalesProjectTasksWithSections(),
+    ])
+
+    if (devResult.status === 'fulfilled') {
+      devTasksContext = formatDevTasksContext(devResult.value)
+    } else {
+      console.warn('Dev tasks fetch skipped:', devResult.reason)
+      devTasksContext = '（開発ボード情報の取得に失敗しました。タスク照合なしで進めます）'
+    }
+
+    if (salesResult.status === 'fulfilled') {
+      salesTasksContext = formatSalesTasksContext(salesResult.value)
+    } else {
+      console.warn('Sales tasks fetch skipped:', salesResult.reason)
+    }
+
+    const combinedContext = [devTasksContext, salesTasksContext].filter(Boolean).join('\n\n')
+    const systemPrompt = buildSystemPrompt(productName || '不明なプロダクト', combinedContext)
+
+    // Build Gemini chat history from messages
+    const geminiHistory = messages.slice(0, -1).map((m: { role: string; content: string }) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }))
+
+    const lastMessage = messages[messages.length - 1]
+
+    const chat = geminiModel.startChat({
+      history: [
+        {
+          role: 'user',
+          parts: [{ text: `以下はあなたのシステム指示です。この指示に従って行動してください:\n\n${systemPrompt}` }],
+        },
+        {
+          role: 'model',
+          parts: [{ text: `承知しました。${productName || 'プロダクト'}に関する機能要望のヒアリングを行い、リクエストシートを作成いたします。開発ボードの既存タスクも確認済みです。チェックリストに沿って質問を進めますね。` }],
+        },
+        ...geminiHistory,
+      ],
     })
+
+    const result = await chat.sendMessageStream(lastMessage.content)
 
     let fullText = ''
 
     const readable = new ReadableStream({
       async start(controller) {
         try {
-          for await (const chunk of stream) {
-            if (
-              chunk.type === 'content_block_delta' &&
-              chunk.delta.type === 'text_delta'
-            ) {
-              const text = chunk.delta.text
+          for await (const chunk of result.stream) {
+            const text = chunk.text()
+            if (text) {
               fullText += text
               controller.enqueue(new TextEncoder().encode(text))
             }
@@ -72,11 +165,12 @@ export async function POST(req: NextRequest) {
                     expected_behavior: parsed.expected_behavior || null,
                     target_users: parsed.target_users || null,
                     target_screen: parsed.target_screen || null,
+                    deadline: parsed.deadline || null,
+                    budget: parsed.budget || null,
                     data_scale: parsed.data_scale || null,
                     external_integrations: parsed.external_integrations || null,
                     io_format: parsed.io_format || null,
                     security_requirements: parsed.security_requirements || null,
-                    deadline: parsed.deadline || null,
                     business_impact: parsed.business_impact || null,
                     unchecked_items: parsed.unchecked_items || null,
                     tier1_complete: parsed.tier1_complete ?? false,

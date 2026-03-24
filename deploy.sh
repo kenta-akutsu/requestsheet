@@ -6,7 +6,7 @@ set -euo pipefail
 # ============================================
 
 # --- 設定 ---
-PROJECT_ID="gemini-api-for-web"
+PROJECT_ID="gen-lang-client-0575259211"
 REGION="asia-northeast1"
 SERVICE_NAME="requestsheet"
 REPO_NAME="requestsheet"

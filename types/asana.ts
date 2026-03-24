@@ -11,6 +11,17 @@ export interface AsanaUser {
   resource_type: 'user'
 }
 
+// 開発ボードのタスク（詳細情報付き）
+export interface AsanaDevTask {
+  gid: string
+  name: string
+  notes: string
+  completed: boolean
+  assignee: string | null
+  dueOn: string | null
+  section: string | null  // ボードのセクション名（例: "開発中", "完了", "バックログ"）
+}
+
 export interface CreateSubtaskParams {
   name: string
   assignee?: string

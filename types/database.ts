@@ -1,4 +1,4 @@
-export type UserRole = 'sales' | 'engineer' | 'bizdev' | 'admin'
+export type UserRole = 'sales' | 'engineer' | 'bizdev' | 'cs' | 'admin'
 export type ProductType = 'OCR' | 'TimecardAgent' | 'NandemonAI' | 'AIConsulting' | 'Other'
 export type ContractStatus = 'pre_contract' | 'negotiating' | 'contracted'
 export type Priority = 'high' | 'medium' | 'low'
@@ -67,6 +67,32 @@ export interface RequestSheet {
   raw_json: Record<string, unknown> | null
   created_at: string
   updated_at: string
+}
+
+export type BugReproducibility = 'reproducible' | 'not_reproducible' | 'no_environment'
+export type OsType = 'windows' | 'mac' | 'linux'
+export type BrowserType = 'chrome' | 'edge' | 'safari' | 'firefox' | 'brave'
+
+export interface BugReport {
+  id: string
+  created_by: string | null
+  product: ProductType
+  is_production_user: boolean
+  reproducibility: BugReproducibility
+  what_action: string
+  where_page: string
+  what_happened: string
+  expected_result: string
+  os_environments: OsType[]
+  browser_environments: BrowserType[]
+  page_url: string | null
+  file_format: string | null
+  execution_id: string | null
+  asana_task_gid: string | null
+  asana_task_name: string | null
+  created_at: string
+  updated_at: string
+  creator?: User
 }
 
 export interface ResponseRecord {

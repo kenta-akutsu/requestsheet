@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@/types/database'
-import { LayoutDashboard, PlusCircle, Settings, LogOut } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Wrench, Settings, LogOut } from 'lucide-react'
 
 export function Sidebar() {
   const [user, setUser] = useState<User | null>(null)
@@ -42,8 +42,9 @@ export function Sidebar() {
   }
 
   const navItems = [
-    { href: '/dashboard', label: 'ダッシュボード', icon: LayoutDashboard, roles: ['sales', 'engineer', 'bizdev', 'admin'] },
+    { href: '/dashboard', label: 'ダッシュボード', icon: LayoutDashboard, roles: ['sales', 'engineer', 'bizdev', 'cs', 'admin'] },
     { href: '/requests/new', label: '新規要望登録', icon: PlusCircle, roles: ['sales', 'admin'] },
+    { href: '/bugs/new', label: '機能改修要望登録', icon: Wrench, roles: ['sales', 'engineer', 'bizdev', 'cs', 'admin'] },
     { href: '/admin', label: '管理画面', icon: Settings, roles: ['admin'] },
   ]
 
@@ -53,6 +54,7 @@ export function Sidebar() {
     sales: '営業',
     engineer: 'エンジニア',
     bizdev: 'BizDev',
+    cs: 'カスタマーサクセス',
     admin: '管理者',
   }
 

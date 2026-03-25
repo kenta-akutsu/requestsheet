@@ -10,6 +10,7 @@ function LoginContent() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSignUp, setIsSignUp] = useState(false)
+  const [isReset, setIsReset] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -30,6 +31,23 @@ function LoginContent() {
       setError(error.message)
       setLoading(false)
     }
+  }
+
+  async function handlePasswordReset(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    setMessage(null)
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+    })
+    if (error) {
+      setError(error.message)
+    } else {
+      setMessage('パスワードリセット用のメールを送信しました。メールをご確認ください。')
+    }
+    setLoading(false)
   }
 
   async function handleEmailLogin(e: React.FormEvent) {
@@ -115,55 +133,106 @@ function LoginContent() {
             </div>
           </div>
 
-          {/* Email Login Form */}
-          <form onSubmit={handleEmailLogin} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1.5">
-                メールアドレス
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="your@email.com"
-                className="w-full px-3 py-2 rounded-md bg-background border border-input text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1.5">
-                パスワード
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="••••••••"
-                className="w-full px-3 py-2 rounded-md bg-background border border-input text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 rounded-md bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              {loading ? '処理中...' : isSignUp ? 'アカウント登録' : 'ログイン'}
-            </button>
-          </form>
+          {/* Password Reset Form */}
+          {isReset ? (
+            <>
+              <form onSubmit={handlePasswordReset} className="space-y-4">
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1.5">
+                    メールアドレス
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="your@email.com"
+                    className="w-full px-3 py-2 rounded-md bg-background border border-input text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 rounded-md bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {loading ? '送信中...' : 'パスワードリセットメールを送信'}
+                </button>
+              </form>
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={() => { setIsReset(false); setError(null); setMessage(null) }}
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                >
+                  ログイン画面に戻る
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Email Login Form */}
+              <form onSubmit={handleEmailLogin} className="space-y-4">
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1.5">
+                    メールアドレス
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="your@email.com"
+                    className="w-full px-3 py-2 rounded-md bg-background border border-input text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1.5">
+                    パスワード
+                  </label>
+                  <input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    placeholder="••••••••"
+                    className="w-full px-3 py-2 rounded-md bg-background border border-input text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 rounded-md bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {loading ? '処理中...' : isSignUp ? 'アカウント登録' : 'ログイン'}
+                </button>
+              </form>
 
-          {/* Toggle Sign Up / Login */}
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => { setIsSignUp(!isSignUp); setError(null); setMessage(null) }}
-              className="text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              {isSignUp ? 'すでにアカウントをお持ちの方はこちら' : 'アカウントをお持ちでない方はこちら'}
-            </button>
-          </div>
+              {/* Password Reset Link */}
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={() => { setIsReset(true); setError(null); setMessage(null) }}
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                >
+                  パスワードを忘れた場合はこちら
+                </button>
+              </div>
+
+              {/* Toggle Sign Up / Login */}
+              <div className="mt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => { setIsSignUp(!isSignUp); setError(null); setMessage(null) }}
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                >
+                  {isSignUp ? 'すでにアカウントをお持ちの方はこちら' : 'アカウントをお持ちでない方はこちら'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
